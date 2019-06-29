@@ -1,3 +1,4 @@
+#Importing all the packages
 from keras.applications.vgg16 import VGG16, preprocess_input
 from keras.preprocessing.image import load_img , img_to_array
 from keras.models import Model
@@ -6,14 +7,14 @@ from pickle import dump
 import tensorflow as tf
 import pandas as pd
 from nltk.corpus import stopwords
-
+#Asking tensorflow to use GPU
 gpu_options = tf.GPUOptions(allow_growth=True)
 session = tf.InteractiveSession(config=tf.ConfigProto(gpu_options=gpu_options))
-
+#Initializing the VGG16 model 
 model = VGG16()
 model.layers.pop()
 model = Model(inputs=model.inputs, outputs=model.layers[-1].output)
-
+#Function to extract the features of each image
 def feature_extraction(img_name):
         
     image = load_img(img_name, target_size =(224,224))
@@ -29,23 +30,24 @@ def feature_extraction(img_name):
     print( img_name , "done!.")
         
     return feature
-
+#Change the directory to where the images are located
 directory = "E:\\DATA\\images"
-
+#Init the features
 features = {}
-
+#Running through the directory
 for name in listdir(directory):
     if name.endswith('jpg'):    
         img_name = directory + "\\" + name
         features[name] = feature_extraction(img_name)
-        
-print('Extracted Features: %d' % len(features))
+#Save the features into a file        
 dump(features, open('features.pkl', 'wb'))  
 
+#Reading the Captions of the images 
 df = pd.read_csv('train.csv')
 captions = df['Captions']
 image = df['Img_name']
 
+#Function to clean the descriptions 
 import re
 def clean_descriptions(des):
     des = des.lower()
@@ -57,9 +59,11 @@ def clean_descriptions(des):
     return des
 
 descriptions = [clean_descriptions(i) for i in captions]
+#Adding an identifier to identify the start and end of a particular sequence
 
 descriptions = ['startseq'+" "+ i +" " + 'endseq' for i in descriptions ]
 
+#writing the decriptions into a txt file
 f = open('descriptions.txt', 'w')
 for i in descriptions:
     string = i +'\n'
@@ -71,6 +75,7 @@ f = open('descriptions.txt', 'r')
 for i in f:
     descriptions.append(i)
 
+#Loading the features
 import pickle
 file = open("features.pkl",'rb')
 features = pickle.load(file)
@@ -89,13 +94,12 @@ def max_length(descriptions):
             n = l
     return n
 
-
+#The RNN model starts here
 from keras.preprocessing.text import Tokenizer
 from keras.preprocessing.sequence import pad_sequences
 from keras.utils import to_categorical , plot_model
 from keras.models import Model , Input ,Dense , LSTM ,Embedding ,Dropout
 from keras.layers.merge import add
-
 
 tokenize = Tokenizer()
 tokenize.fit_on_texts(descriptions)
